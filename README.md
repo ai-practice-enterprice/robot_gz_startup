@@ -42,6 +42,6 @@ and therefore you're robot's package setup looks like this
 
 If you wish to change these conventions you can change the "spawn_robot.launch.py" launch file, to your own discretion.  
 
-![DDS Gazebo and ROS schema](.assest/DDS_and_ROS2_and_Gazebo_Sim.svg)
+![DDS Gazebo and ROS schema](.assets/DDS_and_ROS2_and_Gazebo_Sim.svg)
 
 
