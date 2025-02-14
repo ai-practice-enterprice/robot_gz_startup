@@ -5,9 +5,9 @@ However some criteria must be met in order for your robot package and this packa
 
 **contents**
 <ul>
-  <li><a href="#Requirements-robot-package">requirements: robot package</a></li>
-  <li><a href="#Setup-robot-package">setup: robot package</a></li>
-  <li><a href="#Gazebo-Sim-,-ROS2-and-ros_gz_bridge">Gazebo Sim , ROS2 and ros_gz_bridge</a></li>
+  <li><a href="#requirements-robot-package">requirements: robot package</a></li>
+  <li><a href="#setup-robot-package">setup: robot package</a></li>
+  <li><a href="#gazebo-sim--ros2-and-ros_gz_bridge">Gazebo Sim , ROS2 and ros_gz_bridge</a></li>
   <li><a href="#how-to-use-">How to use ?</a></li>
 </ul>
 
