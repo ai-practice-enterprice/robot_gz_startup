@@ -1,4 +1,3 @@
-import os
 from launch import LaunchDescription
 from ament_index_python import get_package_share_directory
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, RegisterEventHandler
@@ -87,7 +86,7 @@ def generate_launch_description():
         executable='create',
         output='screen',
         arguments=['-topic', 'robot_description', '-name',
-                   'ackermann', '-allow_renaming', 'true'],
+                   'ackermann', '-allow_renaming', 'true', '-z', '0.1'],
     )
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
@@ -113,8 +112,13 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-        OpaqueFunction(function=robot_state_publisher),
         bridge,
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
+                                       'launch',
+                                       'gz_sim.launch.py'])]),
+            launch_arguments=[('gz_args', [' -r -v 1 empty.sdf'])]),
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=gz_spawn_entity,
@@ -127,6 +131,7 @@ def generate_launch_description():
                 on_exit=[ackermann_steering_controller_spawner],
             )
         ),
+        OpaqueFunction(function=robot_state_publisher),
         gz_spawn_entity,
         # Launch Arguments
         robot_name_arg,
