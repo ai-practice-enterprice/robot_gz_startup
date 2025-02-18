@@ -26,7 +26,8 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (enables us to fetch a launch file from a other package and pass arguments to it)
 # - SetEnvironmentVariable
 #   -> (sets a new env variable)
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -97,6 +98,13 @@ def generate_launch_description():
         "launch",
         PythonExpression([
             "'", robot_name, "_description.launch.py", "'"
+        ])
+    ])
+    robot_controllers_launch_path = PathJoinSubstitution([
+        robot_pkg_path,
+        "launch",
+        PythonExpression([
+            "'", robot_name, "_controllers.launch.py", "'"
         ])
     ])
     world_sdf_path = PathJoinSubstitution([
@@ -207,6 +215,10 @@ def generate_launch_description():
         }.items()
     )
 
+    robot_controllers_launch_desc = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([robot_controllers_launch_path])
+    )
+
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
     # NOTE: i noticed that commenting these out you can still run Gazebo. 
@@ -239,4 +251,10 @@ def generate_launch_description():
         ros_gz_launch_desc,
         spawn_entity_node,
         ros_gz_bridge_node,
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=spawn_entity_node,
+                on_exit=[robot_controllers_launch_desc]
+            )
+        )
     ])
