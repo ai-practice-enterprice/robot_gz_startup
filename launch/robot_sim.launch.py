@@ -1,7 +1,7 @@
 from launch import LaunchDescription
 from ament_index_python import get_package_share_directory
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, RegisterEventHandler
-from launch.event_handlers import OnProcessExit
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, RegisterEventHandler, LogInfo
+from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 
@@ -119,20 +119,20 @@ def generate_launch_description():
                                        'launch',
                                        'gz_sim.launch.py'])]),
             launch_arguments=[('gz_args', [' -r -v 1 empty.sdf'])]),
+        OpaqueFunction(function=robot_state_publisher),
+        gz_spawn_entity,
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=gz_spawn_entity,
-                on_exit=[joint_state_broadcaster_spawner],
+                on_exit=[joint_state_broadcaster_spawner, LogInfo(msg='exit entity spawn')],
             )
         ),
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_broadcaster_spawner,
-                on_exit=[ackermann_steering_controller_spawner],
+                on_exit=[ackermann_steering_controller_spawner, LogInfo(msg='End joint_state_broadcaster_spawner')],
             )
         ),
-        OpaqueFunction(function=robot_state_publisher),
-        gz_spawn_entity,
         # Launch Arguments
         robot_name_arg,
         use_sim_arg,
