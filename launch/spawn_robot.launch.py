@@ -26,7 +26,9 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (enables us to fetch a launch file from a other package and pass arguments to it)
 # - SetEnvironmentVariable
 #   -> (sets a new env variable)
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo
+# - RegisterEventHandler
+#   -> (enables us to implement the launch process in a more lineair fashion by setting a target and "callback")
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo, RegisterEventHandler
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -34,12 +36,15 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetE
 #   -> (allows a mix of substitutions and variables of this script to be used together)
 # - PathJoinSubstitution
 #   -> (same "os.path.join" except is done async)
-from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution, IfElseSubstitution
 
 # - PythonLaunchDescriptionSource
 #   -> (tells ROS that the included file is Python based (others : XML or YAML))
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
+# OnProcessExit
+# -> (others exist but this one will launch his arguments once the target process has finished)
+from launch.event_handlers import OnProcessExit
 
 def generate_launch_description():
 
@@ -48,6 +53,7 @@ def generate_launch_description():
     # later on, to this script via the CLI or a other launch file/script
     robot_name = LaunchConfiguration('robot_name')
     world_name = LaunchConfiguration('world_name')
+    gz_server_only = LaunchConfiguration('gz_server_only')
 
     # (2) next we DECLARE the arguments of the launch file
     # that can be passed (or not) by the CLI or a other launch file/script.
@@ -62,19 +68,36 @@ def generate_launch_description():
         description='[ARG] name of the sdf file stored in the /world directory that is used to create the world for Gazbo sim',
         default_value='empty_world'
     )
+    gz_server_only_arg = DeclareLaunchArgument(
+        name='gz_server_only',
+        description='[ARG] choose whether you want to only launch the Gazebo server or both the GUI and server',
+        default_value='false'
+    )
 
     # NOTE :
     # "LaunchConfiguration" -> these are the REFERENCES to the command line arguments
     # "DeclareLaunchArgument" -> these are the arguments you want to accept from the CLI or a other launch script/file
 
-    # CONVENTIONS
+    # CONVENTIONS ============================================================
+
     # the following paragraph is very important for naming coventions and in case we want to add
     # new robot packages later on:
 
-    # 1) the name of the robot package is:             ${ROBOTNAME}_description
-    # 2) the name of the robot's main xacro file is:   ${ROBOTNAME}_main.xacro
-    # 3) the name of the robot's launch file is :      ${ROBOTNAME}_description.launch.py
-    # 4) the name of the world inside this package is ".sdf" file
+    # 1) the name of the robot package is:             
+    # ${ROBOTNAME}_description
+    
+    # 2) the name of the robot's main xacro file is:   
+    # ${ROBOTNAME}_main.xacro
+    
+    # 3) the name of the robot's launch file starting the robot_state_publisher is :      
+    # ${ROBOTNAME}_description.launch.py
+    
+    # 4) the name of the robot's launch file starting the controllers is :      
+    # ${ROBOTNAME}_controllers.launch.py
+    
+    # 5) the name of the world inside this package is ".sdf" file
+
+    # CONVENTIONS ============================================================
 
     # (3) we check if the passed files and package names exist in the filesystem
     world_pkg_path = get_package_share_directory("robot_gz_startup")
@@ -99,6 +122,13 @@ def generate_launch_description():
             "'", robot_name, "_description.launch.py", "'"
         ])
     ])
+    robot_controllers_launch_path = PathJoinSubstitution([
+        robot_pkg_path,
+        "launch",
+        PythonExpression([
+            "'", robot_name, "_controllers.launch.py", "'"
+        ])
+    ])
     world_sdf_path = PathJoinSubstitution([
         world_pkg_path,
         "worlds",
@@ -113,14 +143,9 @@ def generate_launch_description():
     # I know i have to either use the "IfCondition" module or "IfElseSubstitution" module
     # to create async conditions but i am not sure
 
-    # if not os.path.isfile(world_sdf_path):
-    #  raise RuntimeError(f"[ERROR] can not find {world_sdf_path}")
-    # if not os.path.isfile(robot_urdf_path):
-    #  raise RuntimeError(f"[ERROR] can not find {robot_urdf_path}")
-    # if not os.path.isfile(robot_launch_path):
-    #  raise RuntimeError(f"[ERROR] can not find {robot_launch_path}")
-
     # IMPROVEMENTS ============================================================
+
+
 
     # (4) start all nodes and programs by using the preexisting packages:
     # - ros_gz_sim
@@ -133,26 +158,46 @@ def generate_launch_description():
     # (present (normally) in the included robot package launch file (if not it should be created in the robot's package))
 
     # (4.1) ros_gz_sim
-    # we need 2 things :
-    # 1) the path to ros_gz_sim launch file
-    # 2) use the path to find the launch file and pass the required arguments to launch Gazebo with the world
-    # NOTE: the Gazebo migration guide (from classic to sim) also provides a way to
-    # to launch the Gazebo server and Gazebo GUI seperately but this can be changed later on
-
+    # we need 3 things :
+    # 1) find the path to 'ros_gz_sim' launch file
+    # 2) check the user's input for the 'gz_server_only' argument to see if we launch the GUI and the server or only the server 
+    # 3) depending on 1) we can execute: 
+    # 3.1) execute the gz_server.launch.py file 
+    # or
+    # 3.2) execute the gz_sim.launch.py file 
+    #
+    # both instances will be passed to the LaunchDescription but because of the IfCondition only 1 will execute
+    
     # 1)
     ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim')
-
+    
     # 2)
+    gz_launch_file = IfElseSubstitution(
+        condition=gz_server_only,
+        # 3.1)
+        if_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_server.launch.py'),
+        # 3.2)
+        else_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py'),
+    )
+
+    # check : https://gazebosim.org/docs/latest/ros2_launch_gazebo/
+    # both launch files don't have the same argument names when loading the world which is
+    # why the arguments must be handled dynamically
+    world_arg_name = IfElseSubstitution(
+        condition=gz_server_only,
+        # If Server mode (gz_server), pass 'world_sdf_file' 
+        if_value='world_sdf_file', 
+        # If GUI mode    (gz_sim), pass 'gz_args'
+        else_value='gz_args'            
+    )
+    
+    # 3)
     ros_gz_launch_desc = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py')
-        ]),
-        launch_arguments={
-            'gz_args':
-                PythonExpression(["r'", "-r ", world_sdf_path, "'"]),    
-            'on_exit_shutdown': 
-                'true',
-        }.items()
+        launch_description_source=PythonLaunchDescriptionSource(gz_launch_file),
+        launch_arguments=[
+            [ world_arg_name , world_sdf_path],
+            ['on_exit_shutdown', 'true'],
+        ],
     )
 
     # (4.2) spawn_entity
@@ -195,23 +240,29 @@ def generate_launch_description():
         output='screen'
     )
 
-    # (4.4) robot_state_publisher
-    # we need 1 thing:
-    # 1) the robot's package launch file located inside the launch directory
-    # and with a name (by convention) "${ROBOTNAME}_description.launch.py"
-    # where ROBOTNAME is the name of the robot
+    # (4.4) robot_state_publisher && robot_controllers
+    # we need 2 things:
+    # 1) the robot's package launch file that start the robot_state_publisher node 
+    # located inside the launch directory and with a name (by convention) "${ROBOTNAME}_description.launch.py"
+    # 2) the robot's package launch file that start the controllers nodes
+    # located inside the launch directory and with a name (by convention) "${ROBOTNAME}_controllers.launch.py"
+    # where ${ROBOTNAME} is the name of the robot
+
+    # 1)
     robot_launch_desc = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([robot_launch_path]),
-        launch_arguments={
-            'use_sim_time': 'true'
-        }.items()
+        launch_description_source=PythonLaunchDescriptionSource([robot_launch_path]),
+        launch_arguments=[
+            ['use_sim_time', 'true']
+        ]
+    )
+
+    # 2)
+    robot_controllers_launch = IncludeLaunchDescription(
+        launch_description_source=PythonLaunchDescriptionSource([robot_controllers_launch_path])
     )
 
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
-    # NOTE: i noticed that commenting these out you can still run Gazebo. 
-    # I believe this is because Gazebo's  resolves the meshes path by using the attribute in the URDF file.
-    # further investigation might be required if anything doesn't load correctly.
     env_var_resource = SetEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH',
         PathJoinSubstitution([
@@ -225,8 +276,18 @@ def generate_launch_description():
         ''
     )
 
-
-    # (6) finally return the launch description
+    # (6) set some event handlers to start everything in a more lineair 
+    # fashion and have some control in the sequence how nodes are started 
+    # once the robot has spawn inside Gazebo only then we call the launch description
+    # of the robot's controllers
+    launch_desc_after_entity_is_spawn = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=spawn_entity_node,
+            on_exit=[robot_controllers_launch],
+        )
+    )
+    
+    # (7) finally return the launch description
     return LaunchDescription([
         # all the env variables
         env_var_plugin,
@@ -234,9 +295,12 @@ def generate_launch_description():
         # all the declared arguments are returned for if this launch file's arguments are not provided
         robot_name_arg,
         world_name_arg,
+        gz_server_only_arg,
         # all the required Nodes + launch descriptions
         robot_launch_desc,
         ros_gz_launch_desc,
-        spawn_entity_node,
         ros_gz_bridge_node,
+        spawn_entity_node,
+        # all events
+        launch_desc_after_entity_is_spawn,
     ])

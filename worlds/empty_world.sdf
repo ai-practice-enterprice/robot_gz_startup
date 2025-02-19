@@ -1,6 +1,9 @@
 <?xml version="1.0" ?>
 <sdf version="1.8">
   <world name="empty_world">
+    <!--
+    Plugins are a dynamically loaded chunk of code.
+    -->
     <plugin
       filename="gz-sim-physics-system"
       name="gz::sim::systems::Physics">
@@ -26,8 +29,49 @@
       name="gz::sim::systems::Contact">
     </plugin>
 
+    <scene>
+      <shadows>0</shadows>
+      <grid>true</grid>
+      <origin_visual>false</origin_visual>
+    </scene>
+
+    <physics name='default_physics' default='0' type='ode'>
+      <!-- 
+      
+      <max_step_size> is the maximum time at which 
+      every system in simulation can interact with the states of the world. 
+      The smaller the value, the more accurate your calculations, but more computation power is needed. 
+      <real_time_factor> is the ratio of simulation time to real time.
+      
+      -->
+      
+      <!--  the max step size is set to 0.001 by default. -->
+      <!--  When increasing it, the simulation quality may suffer. -->
+      <max_step_size>0.002</max_step_size> 
+      <real_time_factor>500</real_time_factor>
+
+      <!--  this factor actually is computed by multiplying the other two -->
+      <real_time_update_rate>1000</real_time_update_rate>
+
+      <!--<contact_max_correction_vel></contact_max_correction_vel>-->
+      <ode>
+        <solver>
+          <type>quick</type> <!-- Use "world" if stability is still an issue -->
+          <iters>50</iters> <!-- Increase iteration count for better accuracy -->
+          <sor>1.3</sor> <!-- Successive Over-Relaxation factor, keep between 1.0-1.4 -->
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>  <!-- Constraint Force Mixing, lower is more stable -->
+          <erp>0.2</erp> <!-- Error Reduction Parameter, adjust between 0.1 - 0.8 -->
+        </constraints>
+      </ode>
+      
+    </physics>
+
+
+
     <light type="directional" name="sun">
-      <cast_shadows>true</cast_shadows>
+      <cast_shadows>false</cast_shadows>
       <pose>0 0 10 0 0 0</pose>
       <diffuse>0.8 0.8 0.8 1</diffuse>
       <specular>0.2 0.2 0.2 1</specular>
