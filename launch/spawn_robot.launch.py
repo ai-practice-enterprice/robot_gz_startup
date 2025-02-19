@@ -195,7 +195,7 @@ def generate_launch_description():
     ros_gz_launch_desc = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(gz_launch_file),
         launch_arguments=[
-            [ world_arg_name , world_sdf_path],
+            [ world_arg_name , PythonExpression(["'","-r ",world_sdf_path,"'"])],
             ['on_exit_shutdown', 'true'],
         ],
     )
