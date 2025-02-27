@@ -28,7 +28,7 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (sets a new env variable)
 # - ExecuteProcess
 #   -> evaluate and execute commands on runtime
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler, OpaqueFunction
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -231,24 +231,23 @@ def generate_launch_description():
     # NOTE:  while the "bridge" provides a way to communicate ROS topics to Gazebo topics and vice versa
     # it still requires manual configuration but this can be done through a YAML file which can be created later
     # to suit our needs.
-
-    ros_gz_bridge_node = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=[
-            # <topic>@<ROS2_msg_type>@<Gazebo_msg_type>
-            # the ROS message type is followed by:
-            # -> "@" is a bidirectional bridge.
-            # -> "[" is a bridge from Gazebo to ROS.
-            # -> "]" is a bridge from ROS to Gazebo.
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-            # more ROS2 and Gazebo topics can be found at: https://docs.ros.org/en/jazzy/p/ros_gz_bridge/
-            # the bridge itself can be configured later on using the command:
-            # ros2 run ros_gz_bridge parameter_bridge
-        ],
-        output='screen'
-    )
+    def create_bridge_node(context): # This delays the execution of that code until the launch context is available.
+        robot_name_value = robot_name.perform(context)
+        robot_package_name = f"{robot_name_value}_description"
+        bridge_params = os.path.join(get_package_share_directory(robot_package_name),'config','gz_bridge.yaml')
+        ros_gz_bridge_node = Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            arguments=[
+                '--ros-args',
+                '-p',
+                f'config_file:={bridge_params}',
+            ],
+            output='screen'
+        )
+        return [ros_gz_bridge_node]
+    
+    opaque_ros_gz_bridge_node = OpaqueFunction(function=create_bridge_node)
 
     # while we could have put the "/camera/image_raw" in the parameter bridge, 
     # the image_bridge provides a more effecient bridge for image topics
@@ -321,7 +320,7 @@ def generate_launch_description():
         # all the required Nodes + launch descriptions
         robot_launch_desc,
         ros_gz_launch_desc,
-        ros_gz_bridge_node,
+        opaque_ros_gz_bridge_node,
         ros_gz_image_bridge_node,
         spawn_entity_node,
         # all events
