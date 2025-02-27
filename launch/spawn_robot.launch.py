@@ -26,9 +26,9 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (enables us to fetch a launch file from a other package and pass arguments to it)
 # - SetEnvironmentVariable
 #   -> (sets a new env variable)
-# - RegisterEventHandler
-#   -> (enables us to implement the launch process in a more lineair fashion by setting a target and "callback")
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo, RegisterEventHandler
+# - ExecuteProcess
+#   -> evaluate and execute commands on runtime
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -36,14 +36,14 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetE
 #   -> (allows a mix of substitutions and variables of this script to be used together)
 # - PathJoinSubstitution
 #   -> (same "os.path.join" except is done async)
-from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution, IfElseSubstitution
+# - IfElseSubstitution
+#   -> (returns 1 of 2 substitutions)
+from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution , IfElseSubstitution
 
 # - PythonLaunchDescriptionSource
 #   -> (tells ROS that the included file is Python based (others : XML or YAML))
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
-# OnProcessExit
-# -> (others exist but this one will launch his arguments once the target process has finished)
 from launch.event_handlers import OnProcessExit
 
 def generate_launch_description():
@@ -73,7 +73,6 @@ def generate_launch_description():
         description='[ARG] choose whether you want to only launch the Gazebo server or both the GUI and server',
         default_value='false'
     )
-
     # NOTE :
     # "LaunchConfiguration" -> these are the REFERENCES to the command line arguments
     # "DeclareLaunchArgument" -> these are the arguments you want to accept from the CLI or a other launch script/file
@@ -147,9 +146,10 @@ def generate_launch_description():
 
 
 
+
     # (4) start all nodes and programs by using the preexisting packages:
-    # - ros_gz_sim
-    # (use this package's launch file to make it easier to start Gazebo with additional arguments + spawn our robot)
+    # - ros_gz_sim 
+    # (use this package's launch files to make it easier to start Gazebo with additional arguments + spawn our robot)
     # - spawn_entity
     # (a Python script provided by the ros_gz_sim package to spawn a robot in Gazebo)
     # - ros_gz_bridge
@@ -190,15 +190,24 @@ def generate_launch_description():
         # If GUI mode    (gz_sim), pass 'gz_args'
         else_value='gz_args'            
     )
+
+    world_arg = IfElseSubstitution(
+        condition=gz_server_only,
+        # If Server mode (gz_server), pass 'world.sdf' 
+        if_value=world_sdf_path, 
+        # If GUI mode    (gz_sim), pass '-r -v 4 world.sdf'
+        else_value=PythonExpression(["'","-r -v 4 ",world_sdf_path,"'"])            
+    )
     
     # 3)
     ros_gz_launch_desc = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(gz_launch_file),
         launch_arguments=[
-            [ world_arg_name , world_sdf_path],
+            [ world_arg_name ,world_arg],
             ['on_exit_shutdown', 'true'],
         ],
     )
+
 
     # (4.2) spawn_entity
     # we need 1 thing:
@@ -232,11 +241,22 @@ def generate_launch_description():
             # -> "@" is a bidirectional bridge.
             # -> "[" is a bridge from Gazebo to ROS.
             # -> "]" is a bridge from ROS to Gazebo.
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
             # more ROS2 and Gazebo topics can be found at: https://docs.ros.org/en/jazzy/p/ros_gz_bridge/
             # the bridge itself can be configured later on using the command:
             # ros2 run ros_gz_bridge parameter_bridge
         ],
+        output='screen'
+    )
+
+    # while we could have put the "/camera/image_raw" in the parameter bridge, 
+    # the image_bridge provides a more effecient bridge for image topics
+    # see migration guide: https://gazebosim.org/docs/latest/migrating_gazebo_classic_ros2_packages/ 
+    ros_gz_image_bridge_node = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/camera/image_raw'],
         output='screen'
     )
 
@@ -260,6 +280,7 @@ def generate_launch_description():
     robot_controllers_launch = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource([robot_controllers_launch_path])
     )
+    
 
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
@@ -275,6 +296,7 @@ def generate_launch_description():
         'GZ_SIM_PLUGIN_PATH',
         ''
     )
+
 
     # (6) set some event handlers to start everything in a more lineair 
     # fashion and have some control in the sequence how nodes are started 
@@ -300,7 +322,8 @@ def generate_launch_description():
         robot_launch_desc,
         ros_gz_launch_desc,
         ros_gz_bridge_node,
+        ros_gz_image_bridge_node,
         spawn_entity_node,
         # all events
-        launch_desc_after_entity_is_spawn,
+        launch_desc_after_entity_is_spawn
     ])
