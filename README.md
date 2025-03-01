@@ -22,8 +22,14 @@ However some criteria must be met in order for your robot package and this packa
      ```${ROBOTNAME}_description/urdf/${ROBOTNAME}_main.xacro```
   1. the name of the robot's launch file is\
      ```${ROBOTNAME}_description.launch.py```
-  1. the the robot's launch file is located in a subdirectory called "launch"\
+  1. the robot's launch file is located in a subdirectory called "launch"\
      ```${ROBOTNAME}_description/launch/${ROBOTNAME}_description.launch.py```
+  1. the robot's launch file starting the controllers is\
+     ```${ROBOTNAME}_controllers.launch.py```
+  1. the robot's config file for the ros_gz_bridge is\
+     ```gz_bridge.yaml```
+  1. the robot's config file is located in a subdirectory called "config"\
+     ```${ROBOTNAME}_description/config/```
   1. the name of the world inside this package is a ".sdf" file\
      ```robot_gz_startup/world/${WORLD}.sdf```
 
@@ -36,8 +42,12 @@ ros_ws/$ tree
 # > ros_ws/
 #    src/
 #        ROBOTNAME_description/ [REQUIRED]
+#              /config [REQUIRED]
+#                  /gz_bridge.yaml [REQUIRED]
+#                  /ROBOTNAME_controllers.yaml [OPTIONAL]
 #              /launch [REQUIRED]
 #                  /ROBOTNAME_description.launch.py [REQUIRED]
+#                  /ROBOTNAME_controllers.launch.py [REQUIRED]
 #              /urdf [REQUIRED]
 #                  /ROBOTNAME_main.xacro [REQUIRED]
 #                  /ROBOTNAME_links.xacro [OPTIONAL]
@@ -83,6 +93,8 @@ afterwards you can use the package
 $ ros2 launch robot_gz_startup spawn_robot.launch.py robot_name:=${ROBOTNAME}
     # or
 $ ros2 launch robot_gz_startup spawn_robot.launch.py robot_name:=${ROBOTNAME} world_name:=${WORLD}
+    # or
+$ ros2 launch robot_gz_startup spawn_robot.launch.py robot_name:=${ROBOTNAME} gz_server_only:={true/false}
 ```
 
 ## recommendations

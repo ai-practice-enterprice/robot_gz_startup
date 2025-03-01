@@ -4,9 +4,11 @@
 # - ros_gz_bridge   (enables translation between ROS and Gazebo Topics)
 # - ros_gz_sim      (provides a launch script that can take in arguments to launch Gazebo)
 # - ros_gz_image    (provides a type of bridge for image transport effeciency between Gazebo and ROS)
+# - ros_gz_image    (provides a type of bridge for image transport effeciency between Gazebo and ROS)
 # additionally the script takes in a few arguments (from the CLI or a other launch file/script)
 # - robot_name      (name of that robot will have in Gazebo sim)
 # - world_name      (sdf file that contains the world description)
+# - gz_server_only  (boolean for the running only the server or both the GUI and server)
 # - gz_server_only  (boolean for the running only the server or both the GUI and server)
 # finally we must add a environment variables or add to it the location of our robot's meshes
 # in order for Gazebo to be able to launch our mehses
@@ -14,7 +16,7 @@
 # - GZ_SIM_PLUGIN_PATH      (name of the env variable where plugins are located for the sensors)
 import os
 from launch import LaunchDescription, LaunchContext
-from launch_ros.actions import Node, PushROSNamespace
+from launch_ros.actions import Node, PushROSNamespace, PushROSNamespace
 from ament_index_python import get_package_share_directory
 
 # alternative substitution type for:
@@ -134,6 +136,10 @@ def generate_launch_description():
     # gz_bridge.yaml
 
     # 6) the name of the world inside this package is ".sdf" file
+    # 5) the name of the robot's config file for the ros_gz_bridge is :
+    # gz_bridge.yaml
+
+    # 6) the name of the world inside this package is ".sdf" file
 
     # CONVENTIONS ============================================================
 
@@ -166,6 +172,11 @@ def generate_launch_description():
         PythonExpression([
             "'", robot_name, "_controllers.launch.py", "'"
         ])
+    ])
+    robot_gz_bridge_path = PathJoinSubstitution([
+        robot_pkg_path,
+        "config",
+        "gz_bridge.yaml"
     ])
     robot_gz_bridge_path = PathJoinSubstitution([
         robot_pkg_path,
@@ -286,12 +297,14 @@ def generate_launch_description():
         namespace=robot_namespace,
         arguments=[
             # manual configuration
+            # manual configuration
             # <topic>@<ROS2_msg_type>@<Gazebo_msg_type>
             # the ROS message type is followed by:
             # -> "@" is a bidirectional bridge.
             # -> "[" is a bridge from Gazebo to ROS.
             # -> "]" is a bridge from ROS to Gazebo.
             # more ROS2 and Gazebo topics can be found at: https://docs.ros.org/en/jazzy/p/ros_gz_bridge/
+            
             
             # the bridge itself can be configured later on using the command:
             # ros2 run ros_gz_bridge parameter_bridge
