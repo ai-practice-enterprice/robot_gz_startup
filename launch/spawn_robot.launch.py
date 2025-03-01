@@ -3,17 +3,18 @@
 # communicate with each other. These packages are already provided by the "ros_gz" package:
 # - ros_gz_bridge   (enables translation between ROS and Gazebo Topics)
 # - ros_gz_sim      (provides a launch script that can take in arguments to launch Gazebo)
+# - ros_gz_image    (provides a type of bridge for image transport effeciency between Gazebo and ROS)
 # additionally the script takes in a few arguments (from the CLI or a other launch file/script)
-# - robot package   (name of the package that containes already a robot's description +  "robot_state_publisher" node active )
 # - robot_name      (name of that robot will have in Gazebo sim)
 # - world_name      (sdf file that contains the world description)
+# - gz_server_only  (boolean for the running only the server or both the GUI and server)
 # finally we must add a environment variables or add to it the location of our robot's meshes
 # in order for Gazebo to be able to launch our mehses
 # - GZ_SIM_RESOURCE_PATH    (name of the env variable for additional files such as meshes)
 # - GZ_SIM_PLUGIN_PATH      (name of the env variable where plugins are located for the sensors)
 import os
 from launch import LaunchDescription, LaunchContext
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushROSNamespace
 from ament_index_python import get_package_share_directory
 
 # alternative substitution type for:
@@ -28,7 +29,7 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (sets a new env variable)
 # - ExecuteProcess
 #   -> evaluate and execute commands on runtime
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler, GroupAction
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -94,7 +95,10 @@ def generate_launch_description():
     # 4) the name of the robot's launch file starting the controllers is :      
     # ${ROBOTNAME}_controllers.launch.py
     
-    # 5) the name of the world inside this package is ".sdf" file
+    # 5) the name of the robot's config file for the ros_gz_bridge is :
+    # gz_bridge.yaml
+
+    # 6) the name of the world inside this package is ".sdf" file
 
     # CONVENTIONS ============================================================
 
@@ -127,6 +131,11 @@ def generate_launch_description():
         PythonExpression([
             "'", robot_name, "_controllers.launch.py", "'"
         ])
+    ])
+    robot_gz_bridge_path = PathJoinSubstitution([
+        robot_pkg_path,
+        "config",
+        "gz_bridge.yaml"
     ])
     world_sdf_path = PathJoinSubstitution([
         world_pkg_path,
@@ -218,7 +227,7 @@ def generate_launch_description():
         package='ros_gz_sim',
         executable='create',
         arguments=[
-                '-topic', 'robot_description',
+                '-topic', PythonExpression(["'",robot_name,'/robot_description',"'"]),
                 '-entity', robot_name,
                 # for some reason the jetracer and other models spawn under the ground_plane which is why we add 1 unit to the Z coord
                 '-z' , '0.1'
@@ -236,17 +245,33 @@ def generate_launch_description():
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
+            # manual configuration
             # <topic>@<ROS2_msg_type>@<Gazebo_msg_type>
             # the ROS message type is followed by:
             # -> "@" is a bidirectional bridge.
             # -> "[" is a bridge from Gazebo to ROS.
             # -> "]" is a bridge from ROS to Gazebo.
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-            '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
             # more ROS2 and Gazebo topics can be found at: https://docs.ros.org/en/jazzy/p/ros_gz_bridge/
+            
             # the bridge itself can be configured later on using the command:
             # ros2 run ros_gz_bridge parameter_bridge
+
+            # or use a yaml file as configuration
+            # more on this can be found at : https://github.com/gazebosim/ros_gz/blob/ros2/ros_gz_bridge/README.md
+            # you can also run : ros2 run ros_gz_bridge parameter_bridge --help
+
+            # in order to configure the bridge for our purpose correctly 
+            # we need to pass a few arguments that can be found here: https://github.com/gazebosim/ros_gz/blob/ros2/ros_gz_bridge/README.md#example-6-using-ros-namespace-with-the-bridge
+            '--ros-args','-p',
+            PythonExpression(["'",'config_file:=',robot_gz_bridge_path,"'"]),
+            # using namespaces is a way of isolating the same topics (e.g.: /robot_description) for different robots
+            # by creating a topic on which other topics are located (e.g.: /jetank -> /jetank/tf and /jetank/robot_description)
+            # problem is that by default the bridge will NOT apply ROS namespaces on Gazebo topics but will cause a problem.
+            # because a /tf broadcasted by gazebo will not be able to know for which robot it is.
+            # that is why  we enable this parameter.
+            # PythonExpression(["'",'expand_gz_topic_names:=','true',"'"]),
         ],
+        
         output='screen'
     )
 
@@ -272,13 +297,18 @@ def generate_launch_description():
     robot_launch_desc = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource([robot_launch_path]),
         launch_arguments=[
-            ['use_sim_time', 'true']
+            ['use_sim_time', 'true'],
+            ['ns',robot_name]
         ]
     )
 
     # 2)
     robot_controllers_launch = IncludeLaunchDescription(
-        launch_description_source=PythonLaunchDescriptionSource([robot_controllers_launch_path])
+        launch_description_source=PythonLaunchDescriptionSource([robot_controllers_launch_path]),
+        launch_arguments=[
+            ['use_sim_time', 'true'],
+            ['ns',robot_name],
+        ]
     )
     
 
@@ -325,5 +355,5 @@ def generate_launch_description():
         ros_gz_image_bridge_node,
         spawn_entity_node,
         # all events
-        launch_desc_after_entity_is_spawn
+        launch_desc_after_entity_is_spawn,
     ])
