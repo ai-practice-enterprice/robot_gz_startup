@@ -4,11 +4,9 @@
 # - ros_gz_bridge   (enables translation between ROS and Gazebo Topics)
 # - ros_gz_sim      (provides a launch script that can take in arguments to launch Gazebo)
 # - ros_gz_image    (provides a type of bridge for image transport effeciency between Gazebo and ROS)
-# - ros_gz_image    (provides a type of bridge for image transport effeciency between Gazebo and ROS)
 # additionally the script takes in a few arguments (from the CLI or a other launch file/script)
 # - robot_name      (name of that robot will have in Gazebo sim)
 # - world_name      (sdf file that contains the world description)
-# - gz_server_only  (boolean for the running only the server or both the GUI and server)
 # - gz_server_only  (boolean for the running only the server or both the GUI and server)
 # finally we must add a environment variables or add to it the location of our robot's meshes
 # in order for Gazebo to be able to launch our mehses
@@ -136,10 +134,6 @@ def generate_launch_description():
     # gz_bridge.yaml
 
     # 6) the name of the world inside this package is ".sdf" file
-    # 5) the name of the robot's config file for the ros_gz_bridge is :
-    # gz_bridge.yaml
-
-    # 6) the name of the world inside this package is ".sdf" file
 
     # CONVENTIONS ============================================================
 
@@ -172,11 +166,6 @@ def generate_launch_description():
         PythonExpression([
             "'", robot_name, "_controllers.launch.py", "'"
         ])
-    ])
-    robot_gz_bridge_path = PathJoinSubstitution([
-        robot_pkg_path,
-        "config",
-        "gz_bridge.yaml"
     ])
     robot_gz_bridge_path = PathJoinSubstitution([
         robot_pkg_path,
@@ -315,13 +304,14 @@ def generate_launch_description():
 
             # in order to configure the bridge for our purpose correctly 
             # we need to pass a few arguments that can be found here: https://github.com/gazebosim/ros_gz/blob/ros2/ros_gz_bridge/README.md#example-6-using-ros-namespace-with-the-bridge
-            '--ros-args','-p',
-            PythonExpression(["'",'config_file:=',robot_gz_bridge_path,"'"]),
+            '--ros-args',
+            '-p',PythonExpression(["'",'config_file:=',robot_gz_bridge_path,"'"]),
+            # '-p','expand_gz_topic_names:=true',
             # using namespaces is a way of isolating the same topics (e.g.: /robot_description) for different robots
             # by creating a topic on which other topics are located (e.g.: /jetank -> /jetank/tf and /jetank/robot_description)
             # problem is that by default the bridge will NOT apply ROS namespaces on Gazebo topics but will cause a problem.
             # because a /tf broadcasted by gazebo will not be able to know for which robot it is.
-            # that is why  we enable the parameter "expand_gz_topic_names" (see the robots config file).
+            # that is why  we enable the parameter "expand_gz_topic_names"
         ],
         remappings=[
             ('/tf','tf'),
@@ -337,9 +327,7 @@ def generate_launch_description():
         package='ros_gz_image',
         executable='image_bridge',
         namespace=robot_namespace,
-        arguments=[
-            PythonExpression(["'",robot_namespace,'/camera/image_raw',"'"])
-        ],
+        arguments=['/camera/image_raw'],
         output='screen'
     )
 
@@ -372,35 +360,30 @@ def generate_launch_description():
 
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
-    # if we add a robot then we append to the env variable else we set a new env variable
-    # env_var_resource=AppendEnvironmentVariable(
-    #     'GZ_SIM_RESOURCE_PATH',
-    #     PathJoinSubstitution([
-    #         robot_pkg_path,
-    #         'meshes'
-    #     ]),
-    #     condition=IfCondition(add_robot)
-    # ),
-    # env_var_resource=SetEnvironmentVariable(
-    #     'GZ_SIM_RESOURCE_PATH',
-    #     PathJoinSubstitution([
-    #         robot_pkg_path,
-    #         'meshes'
-    #     ]),
-    #     condition=UnlessCondition(add_robot)
-    # )
+    # if we add a robot then we append the meshes to the env variable same goes for world meshes
+    env_var_resource_robots=AppendEnvironmentVariable(
+        'GZ_SIM_RESOURCE_PATH',
+        PathJoinSubstitution([
+            robot_pkg_path,
+            'meshes'
+        ]),
+    )
 
-    # env_var_plugin=AppendEnvironmentVariable(
-    #     'GZ_SIM_PLUGIN_PATH',
-    #     '',
-    #     condition=IfCondition(add_robot)
-    # ),
-    # env_var_plugin=SetEnvironmentVariable(
-    #     'GZ_SIM_PLUGIN_PATH',
-    #     '',
-    #     condition=UnlessCondition(add_robot)
-    # )
+    env_var_resource_worlds=AppendEnvironmentVariable(
+        'GZ_SIM_RESOURCE_PATH',
+        PathJoinSubstitution([
+            world_pkg_path,
+            'meshes'
+        ]),
+    )
 
+    # noticed that when only launching the server this might be required due to the 
+    # launch script 'gz_server.launch.py' NOT setting this. while the launch script 'gz_sim.launch.py' does
+    env_var_plugin=AppendEnvironmentVariable(
+        'GZ_SIM_SYSTEM_PLUGIN_PATH',
+        '/opt/ros/jazzy/lib/',
+    )
+   
 
     # (6) set some event handlers to start everything in a more lineair 
     # fashion and have some control in the sequence how nodes are started 
@@ -416,8 +399,9 @@ def generate_launch_description():
     # (7) finally return the launch description
     return LaunchDescription([
         # all the env variables
-        # env_var_plugin,
-        # env_var_resource,
+        env_var_plugin,
+        env_var_resource_robots,
+        env_var_resource_worlds,
         # all the declared arguments are returned for if this launch file's arguments are not provided
         robot_name_arg,
         world_name_arg,
