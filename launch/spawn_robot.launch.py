@@ -14,7 +14,7 @@
 # - GZ_SIM_PLUGIN_PATH      (name of the env variable where plugins are located for the sensors)
 import os
 from launch import LaunchDescription, LaunchContext
-from launch_ros.actions import Node, PushROSNamespace, PushROSNamespace
+from launch_ros.actions import Node
 from ament_index_python import get_package_share_directory
 
 # alternative substitution type for:
@@ -37,9 +37,9 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetE
 #   -> (allows a mix of substitutions and variables of this script to be used together)
 # - PathJoinSubstitution
 #   -> (same "os.path.join" except is done async)
-# - IfElseSubstitution
+# - IfElseSubstitution # not in humble
 #   -> (returns 1 of 2 substitutions)
-from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution , IfElseSubstitution
+from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution , TextSubstitution
 
 # - PythonLaunchDescriptionSource
 #   -> (tells ROS that the included file is Python based (others : XML or YAML))
@@ -184,6 +184,7 @@ def generate_launch_description():
 
     # NOTE: dont know how to do async conditional checking
     # I know i have to either use the "IfCondition" module or "IfElseSubstitution" module or perhaps a "opaque" function
+    # we can also use "PythonExpression" module but this is less recommended especially if "IfElseSubstitution" is available
     # to create async conditions but i am not sure
 
     # IMPROVEMENTS ============================================================
@@ -209,50 +210,47 @@ def generate_launch_description():
     # or
     # 2.2) execute the gz_sim.launch.py file 
     # 3) depending on the 'add_robot' we can either ignore: 
-    #
-    # both instances will be passed to the LaunchDescription but because of the IfCondition only 1 will execute
     
     # 1)
     ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim')
-    
-    # 2)
-    gz_launch_file = IfElseSubstitution(
-        condition=gz_server_only,
-        # 3.1)
-        if_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_server.launch.py'),
-        # 3.2)
-        else_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py'),
-    )
 
-    # check : https://gazebosim.org/docs/latest/ros2_launch_gazebo/
-    # both launch files don't have the same argument names when loading the world which is
-    # why the arguments must be handled dynamically
-    world_arg_name = IfElseSubstitution(
-        condition=gz_server_only,
-        # If Server mode (gz_server), pass 'world_sdf_file' 
-        if_value='world_sdf_file', 
-        # If GUI mode    (gz_sim), pass 'gz_args'
-        else_value='gz_args'            
-    )
-
-    world_arg = IfElseSubstitution(
-        condition=gz_server_only,
-        # If Server mode (gz_server), pass 'world.sdf' 
-        if_value=world_sdf_path, 
-        # If GUI mode    (gz_sim), pass '-r -v 4 world.sdf'
-        else_value=PythonExpression(["'","-r -v 4 ",world_sdf_path,"'"])            
-    )
+    # 2) and 3) use Python conditionals to determine launch file and arguments
+    gz_server = PythonExpression([" False if ","'",gz_server_only,"'","=='false' else True "])
     
-    # 3)
+    gz_launch_file = PythonExpression([
+        "'" + os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_server.launch.py') + "'" ,
+        " if ",
+        gz_server,
+        " else ",
+        "'" + os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py') + "'"
+    ])
+
+    LogInfo(msg=gz_launch_file)
+
+    world_arg_name = PythonExpression([
+        "'world_sdf_file' if ",
+        gz_server,
+        " else 'gz_args'"
+    ])
+
+    world_arg = PythonExpression([
+        "'", world_sdf_path, "'",
+        " if ",
+        gz_server,
+        " else " ,
+        "'-r -v 4 ' + ",
+        "'",world_sdf_path,"'"
+    ])
+
+    # 3) Launch the description
     ros_gz_launch_desc = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(gz_launch_file),
-        launch_arguments=[
-            [ world_arg_name ,world_arg],
-            ['on_exit_shutdown', 'true'],
-        ],
+        launch_arguments={
+            world_arg_name: world_arg,
+            'on_exit_shutdown': 'true'
+        }.items(),
         condition=UnlessCondition(add_robot)
     )
-
 
     # (4.2) spawn_entity
     # we need 1 thing:
@@ -361,30 +359,30 @@ def generate_launch_description():
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
     # if we add a robot then we append the meshes to the env variable same goes for world meshes
-    env_var_resource_robots=AppendEnvironmentVariable(
-        'GZ_SIM_RESOURCE_PATH',
-        PathJoinSubstitution([
-            robot_pkg_path,
-            'meshes'
-        ]),
-    )
+    # env_var_resource_robots=AppendEnvironmentVariable(
+    #     'GZ_SIM_RESOURCE_PATH',
+    #     PathJoinSubstitution([
+    #         robot_pkg_path,
+    #         'meshes'
+    #     ]),
+    # )
 
-    env_var_resource_worlds=AppendEnvironmentVariable(
+	# we add the the path to the mesh directory wich contains the meshes used by the world sdf file
+    env_var_resource_worlds=SetEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH',
-        PathJoinSubstitution([
+        os.path.join(
             world_pkg_path,
             'meshes'
-        ]),
+        ),
     )
 
     # noticed that when only launching the server this might be required due to the 
     # launch script 'gz_server.launch.py' NOT setting this. while the launch script 'gz_sim.launch.py' does
-    env_var_plugin=AppendEnvironmentVariable(
+    env_var_plugin=SetEnvironmentVariable(
         'GZ_SIM_SYSTEM_PLUGIN_PATH',
         '/opt/ros/jazzy/lib/',
     )
-   
-
+    
     # (6) set some event handlers to start everything in a more lineair 
     # fashion and have some control in the sequence how nodes are started 
     # once the robot has spawn inside Gazebo only then we call the launch description
@@ -400,7 +398,7 @@ def generate_launch_description():
     return LaunchDescription([
         # all the env variables
         env_var_plugin,
-        env_var_resource_robots,
+        # env_var_resource_robots,
         env_var_resource_worlds,
         # all the declared arguments are returned for if this launch file's arguments are not provided
         robot_name_arg,
@@ -418,4 +416,8 @@ def generate_launch_description():
         spawn_entity_node,
         # all events
         launch_desc_after_entity_is_spawn,
+        # debug info
+        LogInfo(msg=gz_launch_file),
+        LogInfo(msg=world_arg_name),
+        LogInfo(msg=world_arg)
     ])
