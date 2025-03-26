@@ -14,7 +14,7 @@
 # - GZ_SIM_PLUGIN_PATH      (name of the env variable where plugins are located for the sensors)
 import os
 from launch import LaunchDescription, LaunchContext
-from launch_ros.actions import Node, PushROSNamespace
+from launch_ros.actions import Node
 from ament_index_python import get_package_share_directory
 
 # alternative substitution type for:
@@ -29,7 +29,7 @@ from launch_ros.substitutions import FindPackageShare
 #   -> (sets a new env variable)
 # - ExecuteProcess
 #   -> evaluate and execute commands on runtime
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler, GroupAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, LogInfo , ExecuteProcess , RegisterEventHandler, GroupAction, AppendEnvironmentVariable
 
 # - LaunchConfiguration
 #   -> (enables to store a launch argument (argument is local and scoped to this file))
@@ -37,15 +37,23 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetE
 #   -> (allows a mix of substitutions and variables of this script to be used together)
 # - PathJoinSubstitution
 #   -> (same "os.path.join" except is done async)
-# - IfElseSubstitution
+# - IfElseSubstitution # not in humble
 #   -> (returns 1 of 2 substitutions)
-from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution , IfElseSubstitution
+from launch.substitutions import LaunchConfiguration, PythonExpression, PathJoinSubstitution , TextSubstitution
 
 # - PythonLaunchDescriptionSource
 #   -> (tells ROS that the included file is Python based (others : XML or YAML))
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
+# - OnProcessExit
+#   -> (when running a EventHandler module (see RegisterEventHandler) you must tell it on WHICH event it has to execute what is inside the EventHandler OnProcessExit is one of these events)
 from launch.event_handlers import OnProcessExit
+
+# - IfCondition
+#   -> (A condition to be checked at launchtime if the result == true then the node or action is executed)
+# - UnlessCondition
+#   -> (A condition to be checked at launchtime if the result == false then the node or action is executed)
+from launch.conditions import IfCondition , UnlessCondition
 
 def generate_launch_description():
 
@@ -55,6 +63,14 @@ def generate_launch_description():
     robot_name = LaunchConfiguration('robot_name')
     world_name = LaunchConfiguration('world_name')
     gz_server_only = LaunchConfiguration('gz_server_only')
+    robot_namespace = LaunchConfiguration('ns')
+    # this is a important argument when running a simulation in Gazebo
+    # setting this to 'true' will result in not launching certain nodes that are only 
+    # required when first booting up the Gazebo server (and GUI)
+    add_robot = LaunchConfiguration('add_robot')
+    # spawning extra robots can should also include a x,y coordinate
+    robot_x_coord = LaunchConfiguration('robot_x_coord')
+    robot_y_coord = LaunchConfiguration('robot_y_coord')
 
     # (2) next we DECLARE the arguments of the launch file
     # that can be passed (or not) by the CLI or a other launch file/script.
@@ -63,6 +79,10 @@ def generate_launch_description():
     robot_name_arg = DeclareLaunchArgument(
         name='robot_name',
         description='[ARG] name of the robot in Gazebo sim'
+    )
+    robot_namespace_arg = DeclareLaunchArgument(
+        name='ns',
+        description='[ARG] required namespace to keep entity (simulation), nodes and topics separate when running multiple robots in the same simulation'
     )
     world_name_arg = DeclareLaunchArgument(
         name='world_name',
@@ -73,6 +93,21 @@ def generate_launch_description():
         name='gz_server_only',
         description='[ARG] choose whether you want to only launch the Gazebo server or both the GUI and server',
         default_value='false'
+    )
+    add_robot_arg = DeclareLaunchArgument(
+        name='add_robot',
+        description='[ARG] when already running a simulation start add this argument',
+        default_value='false'
+    )
+    robot_x_coord_arg = DeclareLaunchArgument(
+        name='robot_x_coord',
+        description='[ARG] when spawning a robot you might want to spawn it in a different location then (0,0,0) so you can add this x value',
+        default_value='0'
+    )
+    robot_y_coord_arg = DeclareLaunchArgument(
+        name='robot_y_coord',
+        description='[ARG] when spawning a robot you might want to spawn it in a different location then (0,0,0) so you can add this y value',
+        default_value='0'
     )
     # NOTE :
     # "LaunchConfiguration" -> these are the REFERENCES to the command line arguments
@@ -148,7 +183,8 @@ def generate_launch_description():
     # IMPROVEMENTS ============================================================
 
     # NOTE: dont know how to do async conditional checking
-    # I know i have to either use the "IfCondition" module or "IfElseSubstitution" module
+    # I know i have to either use the "IfCondition" module or "IfElseSubstitution" module or perhaps a "opaque" function
+    # we can also use "PythonExpression" module but this is less recommended especially if "IfElseSubstitution" is available
     # to create async conditions but i am not sure
 
     # IMPROVEMENTS ============================================================
@@ -169,54 +205,52 @@ def generate_launch_description():
     # (4.1) ros_gz_sim
     # we need 3 things :
     # 1) find the path to 'ros_gz_sim' launch file
-    # 2) check the user's input for the 'gz_server_only' argument to see if we launch the GUI and the server or only the server
-    # 3) depending on 1) we can execute:
-    # 3.1) execute the gz_server.launch.py file
+    # 2) check the user's input for the 'gz_server_only' argument to see if we launch the GUI and the server or only the server 
+    # 2.1) execute the gz_server.launch.py file 
     # or
-    # 3.2) execute the gz_sim.launch.py file
-    #
-    # both instances will be passed to the LaunchDescription but because of the IfCondition only 1 will execute
-
+    # 2.2) execute the gz_sim.launch.py file 
+    # 3) depending on the 'add_robot' we can either ignore: 
+    
     # 1)
     ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim')
 
-    # 2)
-    gz_launch_file = IfElseSubstitution(
-        condition=gz_server_only,
-        # 3.1)
-        if_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_server.launch.py'),
-        # 3.2)
-        else_value=os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py'),
-    )
+    # 2) and 3) use Python conditionals to determine launch file and arguments
+    gz_server = PythonExpression([" False if ","'",gz_server_only,"'","=='false' else True "])
+    
+    gz_launch_file = PythonExpression([
+        "'" + os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_server.launch.py') + "'" ,
+        " if ",
+        gz_server,
+        " else ",
+        "'" + os.path.join(ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py') + "'"
+    ])
 
-    # check : https://gazebosim.org/docs/latest/ros2_launch_gazebo/
-    # both launch files don't have the same argument names when loading the world which is
-    # why the arguments must be handled dynamically
-    world_arg_name = IfElseSubstitution(
-        condition=gz_server_only,
-        # If Server mode (gz_server), pass 'world_sdf_file'
-        if_value='world_sdf_file',
-        # If GUI mode    (gz_sim), pass 'gz_args'
-        else_value='gz_args'
-    )
+    LogInfo(msg=gz_launch_file)
 
-    world_arg = IfElseSubstitution(
-        condition=gz_server_only,
-        # If Server mode (gz_server), pass 'world.sdf'
-        if_value=world_sdf_path,
-        # If GUI mode    (gz_sim), pass '-r -v 4 world.sdf'
-        else_value=PythonExpression(["'","-r -v 4 ",world_sdf_path,"'"])
-    )
+    world_arg_name = PythonExpression([
+        "'world_sdf_file' if ",
+        gz_server,
+        " else 'gz_args'"
+    ])
 
-    # 3)
+    world_arg = PythonExpression([
+        "'", world_sdf_path, "'",
+        " if ",
+        gz_server,
+        " else " ,
+        "'-r -v 4 ' + ",
+        "'",world_sdf_path,"'"
+    ])
+
+    # 3) Launch the description
     ros_gz_launch_desc = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(gz_launch_file),
-        launch_arguments=[
-            [ world_arg_name ,world_arg],
-            ['on_exit_shutdown', 'true'],
-        ],
+        launch_arguments={
+            world_arg_name: world_arg,
+            'on_exit_shutdown': 'true'
+        }.items(),
+        condition=UnlessCondition(add_robot)
     )
-
 
     # (4.2) spawn_entity
     # we need 1 thing:
@@ -227,10 +261,13 @@ def generate_launch_description():
         package='ros_gz_sim',
         executable='create',
         arguments=[
-                '-topic', PythonExpression(["'",'/robot_description',"'"]),
-                '-entity', robot_name,
+                '-topic', PythonExpression(["'",robot_namespace,'/robot_description',"'"]),
+                '-name', robot_namespace,
                 # for some reason the jetracer and other models spawn under the ground_plane which is why we add 1 unit to the Z coord
-                '-z' , '0.1'
+                '-z' , '0.1',
+                # for robot position on the x,y plane
+                '-x',robot_x_coord,
+                '-y',robot_y_coord,
                 # additional arguments can be provided later on to fit out needs
                 # ...
         ]
@@ -244,7 +281,9 @@ def generate_launch_description():
     ros_gz_bridge_node = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
+        namespace=robot_namespace,
         arguments=[
+            # manual configuration
             # manual configuration
             # <topic>@<ROS2_msg_type>@<Gazebo_msg_type>
             # the ROS message type is followed by:
@@ -252,7 +291,8 @@ def generate_launch_description():
             # -> "[" is a bridge from Gazebo to ROS.
             # -> "]" is a bridge from ROS to Gazebo.
             # more ROS2 and Gazebo topics can be found at: https://docs.ros.org/en/jazzy/p/ros_gz_bridge/
-
+            
+            
             # the bridge itself can be configured later on using the command:
             # ros2 run ros_gz_bridge parameter_bridge
 
@@ -262,16 +302,19 @@ def generate_launch_description():
 
             # in order to configure the bridge for our purpose correctly
             # we need to pass a few arguments that can be found here: https://github.com/gazebosim/ros_gz/blob/ros2/ros_gz_bridge/README.md#example-6-using-ros-namespace-with-the-bridge
-            '--ros-args','-p',
-            PythonExpression(["'",'config_file:=',robot_gz_bridge_path,"'"]),
+            '--ros-args',
+            '-p',PythonExpression(["'",'config_file:=',robot_gz_bridge_path,"'"]),
+            # '-p','expand_gz_topic_names:=true',
             # using namespaces is a way of isolating the same topics (e.g.: /robot_description) for different robots
             # by creating a topic on which other topics are located (e.g.: /jetank -> /jetank/tf and /jetank/robot_description)
             # problem is that by default the bridge will NOT apply ROS namespaces on Gazebo topics but will cause a problem.
             # because a /tf broadcasted by gazebo will not be able to know for which robot it is.
-            # that is why  we enable this parameter.
-            # PythonExpression(["'",'expand_gz_topic_names:=','true',"'"]),
+            # that is why  we enable the parameter "expand_gz_topic_names"
         ],
-
+        remappings=[
+            ('/tf','tf'),
+            ('/tf_static','tf_static'),
+        ],
         output='screen'
     )
 
@@ -281,7 +324,8 @@ def generate_launch_description():
     ros_gz_image_bridge_node = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/camera/image_raw'],
+        namespace=robot_namespace,
+        arguments=['camera/image_raw'],
         output='screen'
     )
 
@@ -298,7 +342,7 @@ def generate_launch_description():
         launch_description_source=PythonLaunchDescriptionSource([robot_launch_path]),
         launch_arguments=[
             ['use_sim_time', 'true'],
-            ['ns',robot_name]
+            ['ns',robot_namespace]
         ]
     )
 
@@ -307,29 +351,40 @@ def generate_launch_description():
         launch_description_source=PythonLaunchDescriptionSource([robot_controllers_launch_path]),
         launch_arguments=[
             ['use_sim_time', 'true'],
-            ['ns',robot_name],
+            ['ns',robot_namespace],
         ]
     )
 
 
     # (5) set the new environment variables
     # more on how and why to load these can be found here: https://gazebosim.org/api/sim/8/resources.html
-    env_var_resource = SetEnvironmentVariable(
+    # if we add a robot then we append the meshes to the env variable same goes for world meshes
+    # env_var_resource_robots=AppendEnvironmentVariable(
+    #     'GZ_SIM_RESOURCE_PATH',
+    #     PathJoinSubstitution([
+    #         robot_pkg_path,
+    #         'meshes'
+    #     ]),
+    # )
+
+	# we add the the path to the mesh directory wich contains the meshes used by the world sdf file
+    env_var_resource_worlds=SetEnvironmentVariable(
         'GZ_SIM_RESOURCE_PATH',
-        PathJoinSubstitution([
-            robot_pkg_path,
+        os.path.join(
+            world_pkg_path,
             'meshes'
-        ])
+        ),
     )
 
-    env_var_plugin = SetEnvironmentVariable(
-        'GZ_SIM_PLUGIN_PATH',
-        ''
+    # noticed that when only launching the server this might be required due to the 
+    # launch script 'gz_server.launch.py' NOT setting this. while the launch script 'gz_sim.launch.py' does
+    env_var_plugin=SetEnvironmentVariable(
+        'GZ_SIM_SYSTEM_PLUGIN_PATH',
+        '/opt/ros/jazzy/lib/',
     )
-
-
-    # (6) set some event handlers to start everything in a more lineair
-    # fashion and have some control in the sequence how nodes are started
+    
+    # (6) set some event handlers to start everything in a more lineair 
+    # fashion and have some control in the sequence how nodes are started 
     # once the robot has spawn inside Gazebo only then we call the launch description
     # of the robot's controllers
     launch_desc_after_entity_is_spawn = RegisterEventHandler(
@@ -343,11 +398,16 @@ def generate_launch_description():
     return LaunchDescription([
         # all the env variables
         env_var_plugin,
-        env_var_resource,
+        # env_var_resource_robots,
+        env_var_resource_worlds,
         # all the declared arguments are returned for if this launch file's arguments are not provided
         robot_name_arg,
         world_name_arg,
         gz_server_only_arg,
+        robot_namespace_arg,
+        add_robot_arg,
+        robot_x_coord_arg,
+        robot_y_coord_arg,
         # all the required Nodes + launch descriptions
         robot_launch_desc,
         ros_gz_launch_desc,
@@ -356,4 +416,8 @@ def generate_launch_description():
         spawn_entity_node,
         # all events
         launch_desc_after_entity_is_spawn,
+        # debug info
+        LogInfo(msg=gz_launch_file),
+        LogInfo(msg=world_arg_name),
+        LogInfo(msg=world_arg)
     ])
