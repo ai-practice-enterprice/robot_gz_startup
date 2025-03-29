@@ -1,13 +1,189 @@
-# Blender 4.3.2 MTL File: 'None'
+# Blender 4.3.2 MTL File: 'training_ground.blend'
 # www.blender.org
 
-newmtl Material_ground_plane
+newmtl Aruko_Marker_10
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
-Kd 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd ./Training_ground_background.png
+map_Kd Aruko_Markers/Aruko_Marker_10.png
+
+newmtl Aruko_material
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_1.png
+
+newmtl Aruko_material.002
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_3.png
+
+newmtl Aruko_material.003
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_4.png
+
+newmtl Aruko_material.004
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_5.png
+
+newmtl Aruko_material.005
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_6.png
+
+newmtl Aruko_material.006
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_7.png
+
+newmtl Aruko_material.007
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Aruko_Markers/Aruko_Marker_8.png
+
+newmtl Barcode_1
+Ns 278.280457
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Barcodes/Barcode_1.png
+
+newmtl Barcode_2
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Barcodes/Barcode_2.png
+
+newmtl Barcode_3
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Barcodes/Barcode_3.png
+
+newmtl Circle_Parkour
+Ns 250.000000
+Kd 0.800000 0.800000 0.800000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Other/Circles.png
+
+newmtl Material_ground_plane
+Ns 250.000000
+Kd 0.800000 0.800000 0.800000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Other/Training_ground_background.png
+
+newmtl Material_ground_plane_2
+Ns 250.000000
+Kd 0.800000 0.800000 0.800000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Other/Training_ground_background_2.png
+
+newmtl Parkour_Warehouse
+Ns 250.000000
+Kd 0.800000 0.800000 0.800000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Other/Parkour_Warehouse.png
+
+newmtl Text_Material
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.035566 0.707900 0.800236
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Wall_material
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.803584 0.499796 0.204026
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Wall_material_2
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.062083 0.062083 0.062083
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2

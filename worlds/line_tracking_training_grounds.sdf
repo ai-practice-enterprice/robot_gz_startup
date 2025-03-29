@@ -31,7 +31,7 @@
 
     <scene>
       <shadows>0</shadows>
-      <grid>true</grid>
+      <grid>false</grid>
       <origin_visual>false</origin_visual>
     </scene>
 
@@ -57,7 +57,7 @@
           <geometry>
             <mesh>
               <uri>model://training_ground.obj</uri>
-              <scale>2 2 2</scale> 
+              <scale>0.5 0.5 0.5</scale> 
             </mesh>
           </geometry>
           <surface>
@@ -72,49 +72,13 @@
           <geometry>
             <mesh>
               <uri>model://training_ground.obj</uri>
-              <scale>2 2 2</scale>  
+              <scale>0.5 0.5 0.5</scale>  
             </mesh>
           </geometry>
         </visual>
       </link>
       <pose>0 0 0 1.57 0 0</pose>
     </model>
-
-    <model name='ground_plane'>
-      <static>true</static>
-      <link name='ground_plane_link'>
-        <collision name='ground_plane_collision'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <surface>
-            <friction>
-              <ode/>
-            </friction>
-            <bounce/>
-            <contact/>
-          </surface>
-        </collision>
-        <visual name='ground_plane_visual'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <material>
-            <ambient>0.8 1 0.8 0</ambient>
-            <diffuse>0.8 1 0.8 0</diffuse>
-            <specular>0.8 1 0.8 0</specular>
-          </material>
-        </visual>
-      </link>
-      <pose>0 0 0 0 -0 0</pose>
-    </model>
-
 
   </world>
 </sdf>
