@@ -50,13 +50,13 @@
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
-    <model name="scenario_1_mesh">
+    <model name="scenario_6_mesh">
       <static>true</static>
-      <link name="scenario_1_body">
-        <collision name='scenario_1_collision'>
+      <link name="scenario_6_body">
+        <collision name='scenario_6_collision'>
           <geometry>
             <mesh>
-              <uri>model://scenario_1.obj</uri>
+              <uri>model://scenario_6.obj</uri>
               <scale>0.2 0.2 0.2</scale> 
             </mesh>
           </geometry>
@@ -68,10 +68,10 @@
             <contact/>
           </surface>
         </collision>
-        <visual name="scenario_1_visual">
+        <visual name="scenario_6_visual">
           <geometry>
             <mesh>
-              <uri>model://scenario_1.obj</uri>
+              <uri>model://scenario_6.obj</uri>
               <scale>0.2 0.2 0.2</scale>  
             </mesh>
           </geometry>
