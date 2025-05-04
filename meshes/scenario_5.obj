@@ -1,6 +1,6 @@
 # Blender 4.3.2
 # www.blender.org
-mtllib Scenario_4.mtl
+mtllib scenario_5.mtl
 o Cube
 v -57.500038 -0.182094 11.417029
 v -57.500038 -0.182094 -24.231140
