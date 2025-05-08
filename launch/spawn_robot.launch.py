@@ -369,8 +369,8 @@ def generate_launch_description():
 
 	# we add the the path to the mesh directory wich contains the meshes used by the world sdf file
     env_var_resource_worlds=SetEnvironmentVariable(
-        'GZ_SIM_RESOURCE_PATH',
-        os.path.join(
+        name='GZ_SIM_RESOURCE_PATH',
+        value=os.path.join(
             world_pkg_path,
             'meshes'
         ),
@@ -379,8 +379,8 @@ def generate_launch_description():
     # noticed that when only launching the server this might be required due to the 
     # launch script 'gz_server.launch.py' NOT setting this. while the launch script 'gz_sim.launch.py' does
     env_var_plugin=SetEnvironmentVariable(
-        'GZ_SIM_SYSTEM_PLUGIN_PATH',
-        '/opt/ros/jazzy/lib/',
+        name='GZ_SIM_SYSTEM_PLUGIN_PATH',
+        value='/opt/ros/humble/lib/',
     )
     
     # (6) set some event handlers to start everything in a more lineair 
@@ -397,9 +397,9 @@ def generate_launch_description():
     # (7) finally return the launch description
     return LaunchDescription([
         # all the env variables
+        env_var_resource_worlds,
         env_var_plugin,
         # env_var_resource_robots,
-        env_var_resource_worlds,
         # all the declared arguments are returned for if this launch file's arguments are not provided
         robot_name_arg,
         world_name_arg,
