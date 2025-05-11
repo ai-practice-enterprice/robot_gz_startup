@@ -71,6 +71,7 @@ def generate_launch_description():
     # spawning extra robots can should also include a x,y coordinate
     robot_x_coord = LaunchConfiguration('robot_x_coord')
     robot_y_coord = LaunchConfiguration('robot_y_coord')
+    robot_z_coord = LaunchConfiguration('robot_z_coord')
 
     # (2) next we DECLARE the arguments of the launch file
     # that can be passed (or not) by the CLI or a other launch file/script.
@@ -108,6 +109,11 @@ def generate_launch_description():
         name='robot_y_coord',
         description='[ARG] when spawning a robot you might want to spawn it in a different location then (0,0,0) so you can add this y value',
         default_value='0'
+    )
+    robot_z_coord_arg = DeclareLaunchArgument(
+        name='robot_z_coord',
+        description='[ARG] when spawning a robot you might want to spawn it in a different location then (0,0,0) so you can add this z value',
+        default_value='0.1'
     )
     # NOTE :
     # "LaunchConfiguration" -> these are the REFERENCES to the command line arguments
@@ -264,7 +270,7 @@ def generate_launch_description():
                 '-topic', PythonExpression(["'",robot_namespace,'/robot_description',"'"]),
                 '-name', robot_namespace,
                 # for some reason the jetracer and other models spawn under the ground_plane which is why we add 1 unit to the Z coord
-                '-z' , '0.1',
+                '-z',robot_z_coord,
                 # for robot position on the x,y plane
                 '-x',robot_x_coord,
                 '-y',robot_y_coord,
@@ -408,6 +414,7 @@ def generate_launch_description():
         add_robot_arg,
         robot_x_coord_arg,
         robot_y_coord_arg,
+        robot_z_coord_arg,
         # all the required Nodes + launch descriptions
         robot_launch_desc,
         ros_gz_launch_desc,

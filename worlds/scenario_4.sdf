@@ -57,7 +57,7 @@
           <geometry>
             <mesh>
               <uri>model://scenario_4.obj</uri>
-              <scale>0.3 0.3 0.3</scale> 
+              <scale>0.2 0.2 0.2</scale> 
             </mesh>
           </geometry>
           <surface>
@@ -72,7 +72,7 @@
           <geometry>
             <mesh>
               <uri>model://scenario_4.obj</uri>
-              <scale>0.3 0.3 0.3</scale>  
+              <scale>0.2 0.2 0.2</scale>  
             </mesh>
           </geometry>
         </visual>
