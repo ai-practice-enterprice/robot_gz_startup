@@ -77,7 +77,7 @@
           </geometry>
         </visual>
       </link>
-      <pose>0 0 4 -1.57 0 0</pose>
+      <pose>0 0 0 1.57 0 0</pose>
     </model>
 
     <model name='ground_plane'>

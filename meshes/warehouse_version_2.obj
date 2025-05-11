@@ -1,7 +1,7 @@
 # Blender 4.3.2
 # www.blender.org
 mtllib warehouse_version_2.mtl
-o Warehouse_version_2
+o warehouse_version_2
 v -20.521223 -1.946392 -59.842518
 v -20.521223 -1.946383 59.842518
 v -20.521223 7.896128 -59.842518
