@@ -31,7 +31,7 @@
 
     <scene>
       <shadows>0</shadows>
-      <grid>false</grid>
+      <grid>true</grid>
       <origin_visual>false</origin_visual>
     </scene>
 
@@ -50,14 +50,14 @@
       <direction>-0.5 0.1 -0.9</direction>
     </light>
 
-    <model name="scenario_4_mesh">
+    <model name="warehouse_mesh">
       <static>true</static>
-      <link name="scenario_4_body">
-        <collision name='scenario_4_collision'>
+      <link name="warehouse_body">
+        <collision name='warehouse_collision'>
           <geometry>
             <mesh>
-              <uri>model://scenario_4.obj</uri>
-              <scale>0.2 0.2 0.2</scale> 
+              <uri>model://warehouse_version_2.obj</uri>
+              <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
           <surface>
@@ -68,17 +68,53 @@
             <contact/>
           </surface>
         </collision>
-        <visual name="scenario_4_visual">
+        <visual name="warehouse_visual">
           <geometry>
             <mesh>
-              <uri>model://scenario_4.obj</uri>
-              <scale>0.2 0.2 0.2</scale>  
+              <uri>model://warehouse_version_2.obj</uri>
+              <scale>0.5 0.5 0.5</scale>  
             </mesh>
           </geometry>
         </visual>
       </link>
       <pose>0 0 0 1.57 0 0</pose>
     </model>
+
+    <model name='ground_plane'>
+      <static>true</static>
+      <link name='ground_plane_link'>
+        <collision name='ground_plane_collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode/>
+            </friction>
+            <bounce/>
+            <contact/>
+          </surface>
+        </collision>
+        <visual name='ground_plane_visual'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 1 0.8 0</ambient>
+            <diffuse>0.8 1 0.8 0</diffuse>
+            <specular>0.8 1 0.8 0</specular>
+          </material>
+        </visual>
+      </link>
+      <pose>0 0 0 0 -0 0</pose>
+    </model>
+
 
   </world>
 </sdf>
